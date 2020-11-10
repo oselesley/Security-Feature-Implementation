@@ -21,10 +21,6 @@ import java.util.Optional;
 
 @Service
 public class UserSecurityDetailServiceImpl implements UserSecurityDetailService, UserSecurityDetailTransactionService {
-    private final BigDecimal TRANSACTION_LIMIT = BigDecimal.valueOf(50_000);
-    private final Integer TRANSACTION_COUNT = 3;
-
-
     @Autowired
     private UserSecurityDetailRepository userSecurityDetailRepository;
 
@@ -36,8 +32,8 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
      * @param user
      */
     @Override
-    public void addNewOnboardedUser(User user, String deviceId) {
-        createUserSecurityDetails(user, deviceId);
+    public void addNewOnboardedUser(User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount) {
+        createUserSecurityDetails(user, deviceId, transactionLimit, transactionCount);
     }
 
     /**
@@ -60,8 +56,8 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
     }
 
     @Override
-    public void addNewDevice(User user, String newDeviceId) {
-        createUserSecurityDetails(user, newDeviceId);
+    public void addNewDevice(User user, String newDeviceId, BigDecimal transactionLimit, Integer transactionCount) {
+        createUserSecurityDetails(user, newDeviceId, transactionLimit, transactionCount);
     }
 
     /**
@@ -82,11 +78,11 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
     }
 
     @Override
-    public void updateUserSecurityDetails(UserSecurityDetail userSecurityDetail, BigDecimal amount) {
+    public void updateUserSecurityDetails(UserSecurityDetail userSecurityDetail, BigDecimal amount, Integer transactionCount) {
         List<UserSecurityDetail> userSecurityDetails = getUserSecurityDetail(userSecurityDetail.getUser());
         if (userSecurityDetail.getTwoFactorEnforced()) userSecurityDetail.incrementTransactionCount();
 
-        if (userSecurityDetail.getTransactionCount() >= TRANSACTION_COUNT) userSecurityDetail.setTwoFactorEnforced(false);
+        if (userSecurityDetail.getTransactionCount() >= transactionCount) userSecurityDetail.setTwoFactorEnforced(false);
 
         if (userSecurityDetail.getTimeOfFirstTransaction() == null)
             userSecurityDetail.setTimeOfFirstTransaction(LocalDateTime.now());
@@ -130,21 +126,21 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
         return !userSecurityDetail.getLimitFlag();
     }
 
-    private void createUserSecurityDetails (User user, String deviceId) {
-        UserSecurityDetail newUserSecurityDetail = null;
+    private void createUserSecurityDetails (User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount) {
+        UserSecurityDetail newUserSecurityDetail;
         UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
 
         if (userSecurityDetail != null) throw new SecurityDetailsAlreadyExists(String.format("security details for device with id %s already exists!", deviceId));
         List<UserSecurityDetail> securityDetails = userSecurityDetailRepository.findUserSecurityDetailByUser(user);
 
-        // If user previously exists, create a new security detail with the users former transaction count
+        // If user previously exists, create a new security detail with the users previous totalTransactionAmount
         // Else create a new security detail with a fresh transaction count, i.e starting from 3
         if (securityDetails.size() > 0) {
             newUserSecurityDetail = userSecurityDetailUtils
-                    .createNewUserSecurityDetails(user, deviceId, TRANSACTION_LIMIT, securityDetails.get(0).getTransactionCount());
+                    .createNewUserSecurityDetails(user, deviceId, transactionLimit, securityDetails.get(0).getTransactionCount());
 
         } else newUserSecurityDetail = userSecurityDetailUtils
-                .createNewUserSecurityDetails(user, deviceId, TRANSACTION_LIMIT, TRANSACTION_COUNT);
+                .createNewUserSecurityDetails(user, deviceId, transactionLimit, transactionCount);
 
         userSecurityDetailRepository.save(newUserSecurityDetail);
     }

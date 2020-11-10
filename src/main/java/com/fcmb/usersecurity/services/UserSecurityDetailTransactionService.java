@@ -7,5 +7,5 @@ import java.math.BigDecimal;
 public interface UserSecurityDetailTransactionService {
     boolean verifyTransactionLimitNotExceededAndTwoFactorEnforced(String deviceId, BigDecimal transactionAmount);
 
-    void updateUserSecurityDetails(UserSecurityDetail userSecurityDetail, BigDecimal amount);
+    void updateUserSecurityDetails(UserSecurityDetail userSecurityDetail, BigDecimal amount, Integer transactionCount);
 }
