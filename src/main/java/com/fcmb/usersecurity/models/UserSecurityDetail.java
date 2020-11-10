@@ -30,7 +30,7 @@ public class UserSecurityDetail {
     String deviceId;
     BigDecimal limit;
     Boolean limitFlag = true;
-    BigDecimal totalTransactionAmount;
+    BigDecimal totalTransactionAmount = BigDecimal.ZERO;
     Integer transactionCount = 0;
     Boolean twoFactorEnforced = true;
     LocalDateTime timeOfFirstTransaction;
