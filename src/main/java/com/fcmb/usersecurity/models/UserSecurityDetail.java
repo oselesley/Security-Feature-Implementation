@@ -13,14 +13,19 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
+import javax.persistence.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
+@Entity
 public class UserSecurityDetail {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private BigInteger id;
+    @ManyToOne
     User user;
     String deviceId;
     BigDecimal limit;
