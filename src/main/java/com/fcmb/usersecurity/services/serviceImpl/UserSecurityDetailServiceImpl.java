@@ -64,6 +64,12 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
         createUserSecurityDetails(user, newDeviceId);
     }
 
+    /**
+     * fetchUserStatus returns the current status of the users security details
+     * @param user
+     * @param deviceId
+     * @return Status
+     */
     @Override
     public Status fetchUserStatus(User user, String deviceId) {
         UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
@@ -102,7 +108,7 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
     }
 
     /**
-     * VerifyTwoFactorEnforced: verifies the user details before transaction
+     * VerifyTwoFactorEnforced: a helper method that verifies the twoFactorEnforced status before transaction
      * @param deviceId
      * @param transactionAmount
      * @return boolean
@@ -110,9 +116,7 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
     private boolean verifyTwoFactorEnforced(String deviceId, BigDecimal transactionAmount) {
         UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
         // Checks if the userSecurity details still has a two factor enforced flag
-        if (userSecurityDetail.getTwoFactorEnforced()) return false;
-
-        return true;
+        return !userSecurityDetail.getTwoFactorEnforced();
     }
 
     /**
@@ -123,12 +127,7 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
      */
     private boolean verifyTransactionLimitNotExceeded(String deviceId, BigDecimal transactionAmount) {
         UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
-        BigDecimal limit = userSecurityDetail.getLimit();
-        if (limit.compareTo(transactionAmount) < 0 ||
-                limit.compareTo(userSecurityDetail.getTotalTransactionAmount().add(transactionAmount)) < 0) {
-            return false;
-        }
-        return true;
+        return !userSecurityDetail.getLimitFlag();
     }
 
     private void createUserSecurityDetails (User user, String deviceId) {
