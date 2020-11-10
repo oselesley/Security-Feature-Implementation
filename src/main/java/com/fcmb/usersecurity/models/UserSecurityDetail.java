@@ -31,7 +31,7 @@ public class UserSecurityDetail {
     BigDecimal limit;
     Boolean limitFlag = true;
     BigDecimal totalTransactionAmount;
-    Integer transactionCount = 3;
+    Integer transactionCount = 0;
     Boolean twoFactorEnforced = true;
     LocalDateTime timeOfFirstTransaction;
     @CreationTimestamp
@@ -61,7 +61,7 @@ public class UserSecurityDetail {
         return this;
     }
 
-    public void decrementTransactionCount() {
+    public void incrementTransactionCount() {
         transactionCount--;
     }
 }

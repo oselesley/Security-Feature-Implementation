@@ -11,7 +11,7 @@ import java.util.List;
 public interface UserSecurityDetailService {
     void addNewOnboardedUser (User user, String deviceId);
 
-    void addNewDevice();
+    void addNewDevice(User user, String deviceId);
 
     List<UserSecurityDetail> getUserSecurityDetail(User user);
 

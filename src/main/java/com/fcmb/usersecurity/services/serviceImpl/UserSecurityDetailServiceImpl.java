@@ -37,24 +37,8 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
      */
     @Override
     public void addNewOnboardedUser(User user, String deviceId) {
-        UserSecurityDetail newUserSecurityDetail = null;
-        UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
-
-        if (userSecurityDetail != null) throw new SecurityDetailsAlreadyExists(String.format("security details for device with id %s already exists!", deviceId));
-        List<UserSecurityDetail> securityDetails = userSecurityDetailRepository.findUserSecurityDetailByUser(user);
-
-        // If user previously exists, create a new security detail with the users former transaction count
-        // Else create a new security detail with a fresh transaction count, i.e starting from 3
-        if (securityDetails.size() > 0) {
-            newUserSecurityDetail = userSecurityDetailUtils
-                    .createNewUserSecurityDetails(user, deviceId, TRANSACTION_LIMIT, securityDetails.get(0).getTransactionCount());
-
-        } else newUserSecurityDetail = userSecurityDetailUtils
-                .createNewUserSecurityDetails(user, deviceId, TRANSACTION_LIMIT, TRANSACTION_COUNT);
-
-        userSecurityDetailRepository.save(newUserSecurityDetail);
+        createUserSecurityDetails(user, deviceId);
     }
-
 
     /**
      * Fetches a list of userSecurityDetails
@@ -76,8 +60,8 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
     }
 
     @Override
-    public void addNewDevice() {
-        // Similar logic with onBoarding User;
+    public void addNewDevice(User user, String newDeviceId) {
+        createUserSecurityDetails(user, newDeviceId);
     }
 
     @Override
@@ -86,49 +70,83 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
         return userSecurityDetailUtils.getUserStatusFromUserSecurityDetails(userSecurityDetail);
     }
 
+    @Override
+    public boolean verifyTransactionLimitNotExceededAndTwoFactorEnforced(String deviceId, BigDecimal transactionAmount) {
+        return verifyTransactionLimitNotExceeded(deviceId, transactionAmount) && verifyTwoFactorEnforced(deviceId, transactionAmount);
+    }
+
+    @Override
+    public void updateUserSecurityDetails(UserSecurityDetail userSecurityDetail, BigDecimal amount) {
+        List<UserSecurityDetail> userSecurityDetails = getUserSecurityDetail(userSecurityDetail.getUser());
+        if (userSecurityDetail.getTwoFactorEnforced()) userSecurityDetail.incrementTransactionCount();
+
+        if (userSecurityDetail.getTransactionCount() >= TRANSACTION_COUNT) userSecurityDetail.setTwoFactorEnforced(false);
+
+        if (userSecurityDetail.getTimeOfFirstTransaction() == null)
+            userSecurityDetail.setTimeOfFirstTransaction(LocalDateTime.now());
+
+        if (userSecurityDetail.getTimeOfFirstTransaction().plusHours(24).isAfter(LocalDateTime.now())) userSecurityDetail.setLimitFlag(false);
+
+        if (userSecurityDetail.getLimit().compareTo(amount) < 0 ||
+                userSecurityDetail.getLimit().compareTo(userSecurityDetail.getTotalTransactionAmount().add(amount)) < 0)
+            throw new TransactionLimitExceededException("transaction limit exceeded!");
+
+        for (UserSecurityDetail usd : userSecurityDetails) {
+               usd.setTimeOfFirstTransaction(userSecurityDetail.getTimeOfFirstTransaction());
+               usd.setLimitFlag(userSecurityDetail.getLimitFlag());
+               usd.setTotalTransactionAmount(userSecurityDetail.getTotalTransactionAmount());
+               userSecurityDetailRepository.save(usd);
+        }
+
+        userSecurityDetailRepository.save(userSecurityDetail);
+    }
 
     /**
-     * This method is called on every user transaction
-     * @param user
-     * @return
+     * VerifyTwoFactorEnforced: verifies the user details before transaction
+     * @param deviceId
+     * @param transactionAmount
+     * @return boolean
      */
-    @Override
-    public void performTransaction(User user, BigDecimal transactionAmount) {
-        List<UserSecurityDetail> userSecurityDetails = getUserSecurityDetail(user);
-        for (UserSecurityDetail userSecurityDetail : userSecurityDetails) {
-            LocalDateTime timeOfFirstTransaction = userSecurityDetail.getTimeOfFirstTransaction();
-            BigDecimal limit = userSecurityDetail.getLimit();
-            // If the time of first transaction is null set the time
-            if (userSecurityDetail.getTimeOfFirstTransaction() == null)
-                userSecurityDetail.setTimeOfFirstTransaction(LocalDateTime.now());
+    private boolean verifyTwoFactorEnforced(String deviceId, BigDecimal transactionAmount) {
+        UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
+        // Checks if the userSecurity details still has a two factor enforced flag
+        if (userSecurityDetail.getTwoFactorEnforced()) return false;
 
-            // Checks if the userSecurity details still has a two factor enforced flag
-            // If it does it decrements the transaction count and checks if the transaction count
-            // equals zero, then sets two factor enforced to false;
-            if (userSecurityDetail.getTwoFactorEnforced()) {
-                userSecurityDetail.decrementTransactionCount();
-                if (userSecurityDetail.getTransactionCount() == 0) {
-                    userSecurityDetail.setTwoFactorEnforced(false);
-                }
-            }
+        return true;
+    }
 
-            // If its 24hours since the time of first transaction, set limit flag to false
-            // else check if the transaction amount is greater than the specified limit
-            // or if the total transaction amount + the transaction amount is greater than the
-            // specified limit
-            if (timeOfFirstTransaction.plusHours(24).isAfter(LocalDateTime.now())) {
-                userSecurityDetail.setLimitFlag(false);
-            }else if (userSecurityDetail.getLimitFlag()) {
-                if (limit.compareTo(transactionAmount) < 0 ||
-                        userSecurityDetail.getTotalTransactionAmount().add(transactionAmount).compareTo(limit) < 0) {
-                    throw new TransactionLimitExceededException("user transaction limit is exceeded!");
-                } else {
-                    userSecurityDetail.setTotalTransactionAmount(userSecurityDetail.getTotalTransactionAmount().add(transactionAmount));
-                }
-
-            }
-
-            userSecurityDetailRepository.save(userSecurityDetail);
+    /**
+     * VerifyTransactionLimitNotExceeded: verifies that the users transaction limit hasn't exceeded
+     * @param deviceId
+     * @param transactionAmount
+     * @return boolean
+     */
+    private boolean verifyTransactionLimitNotExceeded(String deviceId, BigDecimal transactionAmount) {
+        UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
+        BigDecimal limit = userSecurityDetail.getLimit();
+        if (limit.compareTo(transactionAmount) < 0 ||
+                limit.compareTo(userSecurityDetail.getTotalTransactionAmount().add(transactionAmount)) < 0) {
+            return false;
         }
+        return true;
+    }
+
+    private void createUserSecurityDetails (User user, String deviceId) {
+        UserSecurityDetail newUserSecurityDetail = null;
+        UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
+
+        if (userSecurityDetail != null) throw new SecurityDetailsAlreadyExists(String.format("security details for device with id %s already exists!", deviceId));
+        List<UserSecurityDetail> securityDetails = userSecurityDetailRepository.findUserSecurityDetailByUser(user);
+
+        // If user previously exists, create a new security detail with the users former transaction count
+        // Else create a new security detail with a fresh transaction count, i.e starting from 3
+        if (securityDetails.size() > 0) {
+            newUserSecurityDetail = userSecurityDetailUtils
+                    .createNewUserSecurityDetails(user, deviceId, TRANSACTION_LIMIT, securityDetails.get(0).getTransactionCount());
+
+        } else newUserSecurityDetail = userSecurityDetailUtils
+                .createNewUserSecurityDetails(user, deviceId, TRANSACTION_LIMIT, TRANSACTION_COUNT);
+
+        userSecurityDetailRepository.save(newUserSecurityDetail);
     }
 }
