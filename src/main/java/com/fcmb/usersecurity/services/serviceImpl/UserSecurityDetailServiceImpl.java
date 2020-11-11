@@ -12,7 +12,6 @@ import com.fcmb.usersecurity.services.UserSecurityDetailTransactionService;
 import com.fcmb.usersecurity.utils.UserSecurityDetailUtils;
 import org.hibernate.annotations.common.util.impl.LoggerFactory;
 import org.jboss.logging.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -80,8 +79,8 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
     }
 
     @Override
-    public boolean verifyTransactionLimitNotExceededAndTwoFactorEnforced(String deviceId, BigDecimal transactionAmount) {
-        return verifyTransactionLimitNotExceeded(deviceId, transactionAmount) && verifyTwoFactorEnforced(deviceId, transactionAmount);
+    public boolean verifyTransactionLimitNotExceededAndTwoFactorEnforced(String deviceId, BigDecimal transactionAmount, Integer count) {
+        return verifyTransactionLimitNotExceeded(deviceId, transactionAmount) && verifyNumberOfTransactionsLessThanTransactionCount(deviceId, transactionAmount, count);
     }
 
     @Override
@@ -116,10 +115,10 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
      * @param transactionAmount
      * @return boolean
      */
-    private boolean verifyTwoFactorEnforced(String deviceId, BigDecimal transactionAmount) {
+    private boolean verifyNumberOfTransactionsLessThanTransactionCount(String deviceId, BigDecimal transactionAmount, Integer count) {
         UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
         // Checks if the userSecurity details still has a two factor enforced flag
-        return !userSecurityDetail.getTwoFactorEnforced();
+        return userSecurityDetail.getTransactionCount() < count;
     }
 
     /**
@@ -130,7 +129,11 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
      */
     private boolean verifyTransactionLimitNotExceeded(String deviceId, BigDecimal transactionAmount) {
         UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
-        return !userSecurityDetail.getLimitFlag();
+        if (userSecurityDetail.getTimeOfFirstTransaction().plusHours(24).isAfter(LocalDateTime.now())) {
+            return userSecurityDetail.getLimit().compareTo(transactionAmount) >= 0 &&
+                    userSecurityDetail.getLimit().compareTo(userSecurityDetail.getTotalTransactionAmount().add(transactionAmount)) >= 0;
+        }
+        return true;
     }
 
     private void createUserSecurityDetails (User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount) {
