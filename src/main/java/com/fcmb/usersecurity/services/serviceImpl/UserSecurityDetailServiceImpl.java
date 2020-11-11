@@ -93,7 +93,7 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
         if (userSecurityDetail.getTimeOfFirstTransaction() == null)
             userSecurityDetail.setTimeOfFirstTransaction(LocalDateTime.now());
 
-        if (userSecurityDetail.getTimeOfFirstTransaction().plusHours(24).isAfter(LocalDateTime.now())) userSecurityDetail.setLimitFlag(false);
+        if (userSecurityDetail.getTimeOfFirstTransaction().plusHours(24).isBefore(LocalDateTime.now())) userSecurityDetail.setLimitFlag(false);
 
         if (userSecurityDetail.getLimit().compareTo(amount) < 0 ||
                 userSecurityDetail.getLimit().compareTo(userSecurityDetail.getTotalTransactionAmount().add(amount)) < 0)
@@ -129,9 +129,15 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
      */
     private boolean verifyTransactionLimitNotExceeded(String deviceId, BigDecimal transactionAmount) {
         UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
+
+        if (userSecurityDetail.getTimeOfFirstTransaction() == null)
+            userSecurityDetail.setTimeOfFirstTransaction(LocalDateTime.now());
+
+
         if (userSecurityDetail.getTimeOfFirstTransaction().plusHours(24).isAfter(LocalDateTime.now())) {
-            return userSecurityDetail.getLimit().compareTo(transactionAmount) >= 0 &&
-                    userSecurityDetail.getLimit().compareTo(userSecurityDetail.getTotalTransactionAmount().add(transactionAmount)) >= 0;
+            if (userSecurityDetail.getLimit().compareTo(transactionAmount) < 0 ||
+                    userSecurityDetail.getLimit().compareTo(userSecurityDetail.getTotalTransactionAmount().add(transactionAmount)) < 0)
+                return false;
         }
         return true;
     }

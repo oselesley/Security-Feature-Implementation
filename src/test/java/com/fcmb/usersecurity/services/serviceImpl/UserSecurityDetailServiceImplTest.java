@@ -139,13 +139,13 @@ class UserSecurityDetailServiceImplTest {
     @DisplayName("Should verify transaction limit not exceeded and two factor enforced 🦁")
     void testVerifyTransactionLimitNotExceededAndTwoFactorEnforced() {
         when(userSecurityDetailRepository.findUserSecurityDetailByDeviceId(DEVICE_ID)).thenReturn(Optional.of(userSecurityDetail));
-        Boolean result = userSecurityDetailService.verifyTransactionLimitNotExceededAndTwoFactorEnforced(DEVICE_ID, BigDecimal.valueOf(50_000));
+        Boolean result = userSecurityDetailService.verifyTransactionLimitNotExceededAndTwoFactorEnforced(DEVICE_ID, BigDecimal.valueOf(60_000), 5);
         assertFalse(result);
         userSecurityDetail.setLimitFlag(false);
         userSecurityDetail.setTwoFactorEnforced(false);
         when(userSecurityDetailRepository.findUserSecurityDetailByDeviceId(DEVICE_ID)).thenReturn(Optional.of(userSecurityDetail));
 
-        result = userSecurityDetailService.verifyTransactionLimitNotExceededAndTwoFactorEnforced(DEVICE_ID, BigDecimal.valueOf(50_000));
-        assertTrue(result);
+        result = userSecurityDetailService.verifyTransactionLimitNotExceededAndTwoFactorEnforced(DEVICE_ID, BigDecimal.valueOf(50_000), 3);
+        assertFalse(result);
     }
 }
