@@ -14,6 +14,8 @@ public interface UserSecurityDetailService {
 
     void addNewDevice(User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount);
 
+    UserSecurityDetail getUserSecurityDetail(String deviceId);
+
     List<UserSecurityDetail> getUserSecurityDetail(User user);
 
     Status fetchUserStatus (User user, String deviceId);

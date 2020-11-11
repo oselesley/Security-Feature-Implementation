@@ -10,6 +10,8 @@ import com.fcmb.usersecurity.repositories.UserSecurityDetailRepository;
 import com.fcmb.usersecurity.services.UserSecurityDetailService;
 import com.fcmb.usersecurity.services.UserSecurityDetailTransactionService;
 import com.fcmb.usersecurity.utils.UserSecurityDetailUtils;
+import org.hibernate.annotations.common.util.impl.LoggerFactory;
+import org.jboss.logging.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,18 +23,22 @@ import java.util.Optional;
 
 @Service
 public class UserSecurityDetailServiceImpl implements UserSecurityDetailService, UserSecurityDetailTransactionService {
-    @Autowired
-    private UserSecurityDetailRepository userSecurityDetailRepository;
+    private final UserSecurityDetailRepository userSecurityDetailRepository;
+    private final UserSecurityDetailUtils userSecurityDetailUtils;
+    Logger logger = LoggerFactory.logger(UserSecurityDetailService.class);
 
-    @Autowired
-    private UserSecurityDetailUtils userSecurityDetailUtils;
+    public UserSecurityDetailServiceImpl(UserSecurityDetailRepository userSecurityDetailRepository,
+                                         UserSecurityDetailUtils userSecurityDetailUtils) {
+        this.userSecurityDetailRepository = userSecurityDetailRepository;
+        this.userSecurityDetailUtils = userSecurityDetailUtils;
+    }
 
     /**
      * When a new user is onboarded into the app, the UserSecurityDetails for that user is created
      * @param user
      */
     @Override
-    public void addNewOnboardedUser(User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount) {
+    public void addNewOnboardedUser (User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount) {
         createUserSecurityDetails(user, deviceId, transactionLimit, transactionCount);
     }
 
@@ -47,6 +53,7 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
                 .findUserSecurityDetailByUser(user);
     }
 
+    @Override
     public UserSecurityDetail getUserSecurityDetail(String deviceId) {
         Optional<UserSecurityDetail> userSecurityDetail = userSecurityDetailRepository.findUserSecurityDetailByDeviceId(deviceId);
         if (!userSecurityDetail.isPresent())
@@ -128,7 +135,13 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
 
     private void createUserSecurityDetails (User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount) {
         UserSecurityDetail newUserSecurityDetail;
-        UserSecurityDetail userSecurityDetail = getUserSecurityDetail(deviceId);
+        UserSecurityDetail userSecurityDetail = null;
+        try {
+           userSecurityDetail = getUserSecurityDetail(deviceId);
+        } catch (SecurityDetailNotFoundException e) {
+            logger.info(e.getMessage());
+        }
+
 
         if (userSecurityDetail != null) throw new SecurityDetailsAlreadyExists(String.format("security details for device with id %s already exists!", deviceId));
         List<UserSecurityDetail> securityDetails = userSecurityDetailRepository.findUserSecurityDetailByUser(user);
