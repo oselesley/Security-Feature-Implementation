@@ -3,8 +3,8 @@ package com.fcmb.usersecurity.utils;
  * Utility class for the UserSecurityDetailsMethod
  */
 
-import com.fcmb.usersecurity.models.Status;
 import com.fcmb.usersecurity.models.User;
+import com.fcmb.usersecurity.models.Status;
 import com.fcmb.usersecurity.models.UserSecurityDetail;
 import org.springframework.stereotype.Component;
 

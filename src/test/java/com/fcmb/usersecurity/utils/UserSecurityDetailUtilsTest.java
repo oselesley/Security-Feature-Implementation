@@ -1,12 +1,13 @@
 package com.fcmb.usersecurity.utils;
 
-import com.fcmb.usersecurity.models.Status;
 import com.fcmb.usersecurity.models.User;
+import com.fcmb.usersecurity.models.Status;
 import com.fcmb.usersecurity.models.UserSecurityDetail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,7 +21,7 @@ class UserSecurityDetailUtilsTest {
     @BeforeEach
     void setUp() {
         user = new User();
-        user.setId(BigDecimal.ONE);
+        user.setId(BigInteger.ONE);
         userSecurityDetail = new UserSecurityDetail()
                 .withUser(user)
                 .withDeviceId(DEVICE_ID)

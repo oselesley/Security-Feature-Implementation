@@ -1,12 +1,12 @@
 package com.fcmb.usersecurity.services.serviceImpl;
 
+import com.fcmb.usersecurity.config.TransactionConstraints;
 import com.fcmb.usersecurity.exceptions.SecurityDetailNotFoundException;
 import com.fcmb.usersecurity.exceptions.SecurityDetailsAlreadyExists;
-import com.fcmb.usersecurity.models.Status;
 import com.fcmb.usersecurity.models.User;
+import com.fcmb.usersecurity.models.Status;
 import com.fcmb.usersecurity.models.UserSecurityDetail;
 import com.fcmb.usersecurity.repositories.UserSecurityDetailRepository;
-import com.fcmb.usersecurity.services.UserSecurityDetailService;
 import com.fcmb.usersecurity.utils.UserSecurityDetailUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +16,7 @@ import org.junit.platform.commons.logging.LoggerFactory;
 import org.mockito.Mockito;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,14 +31,19 @@ class UserSecurityDetailServiceImplTest {
     User user;
     String DEVICE_ID = "2XF4ERY120009W";
     Logger logger = LoggerFactory.getLogger(UserSecurityDetailServiceImplTest.class);
+    TransactionConstraints transactionConstraints;
 
     @BeforeEach
     void setUp() {
+        transactionConstraints = Mockito.mock(TransactionConstraints.class);
+        when(transactionConstraints.getTransactionCount()).thenReturn(3);
+        when(transactionConstraints.getTransactionLimit()).thenReturn(BigDecimal.valueOf(50_000));
+
         userSecurityDetailRepository = Mockito.mock(UserSecurityDetailRepository.class);
         userSecurityDetailUtils = new UserSecurityDetailUtils();
-        userSecurityDetailService = new UserSecurityDetailServiceImpl(userSecurityDetailRepository, userSecurityDetailUtils);
+        userSecurityDetailService = new UserSecurityDetailServiceImpl(userSecurityDetailRepository, userSecurityDetailUtils, transactionConstraints);
         user = new User();
-        user.setId(BigDecimal.ONE);
+        user.setId(BigInteger.ONE);
         userSecurityDetail = new UserSecurityDetail()
                 .withUser(user)
                 .withDeviceId(DEVICE_ID)
@@ -49,12 +55,12 @@ class UserSecurityDetailServiceImplTest {
     @DisplayName("Should not add new onboarded user 🥙")
     void testDoesNotAddNewOnboardedUser() {
         assertDoesNotThrow(() -> {
-            userSecurityDetailService.addNewOnboardedUser(user, DEVICE_ID, BigDecimal.valueOf(50_000), 3);
+            userSecurityDetailService.addNewOnboardedUser(user, DEVICE_ID);
         });
         when(userSecurityDetailRepository.findUserSecurityDetailByDeviceId(DEVICE_ID)).thenReturn(Optional.of(userSecurityDetail));
 
         assertThrows(SecurityDetailsAlreadyExists.class, () -> {
-            userSecurityDetailService.addNewOnboardedUser(user, DEVICE_ID, BigDecimal.valueOf(50_000), 3);
+            userSecurityDetailService.addNewOnboardedUser(user, DEVICE_ID);
         });
     }
 
@@ -62,13 +68,13 @@ class UserSecurityDetailServiceImplTest {
     @DisplayName("Should add new onboarded user 🍔")
     void testAddNewOnboardedUser() {
         assertDoesNotThrow(() -> {
-            userSecurityDetailService.addNewOnboardedUser(user, DEVICE_ID, BigDecimal.valueOf(50_000), 3);
+            userSecurityDetailService.addNewOnboardedUser(user, DEVICE_ID);
         });
         userSecurityDetail.setDeviceId("OTYREIM90WPOE");
         when(userSecurityDetailRepository.findUserSecurityDetailByDeviceId(DEVICE_ID)).thenReturn(Optional.empty());
 
         assertDoesNotThrow(() -> {
-            userSecurityDetailService.addNewOnboardedUser(user, DEVICE_ID, BigDecimal.valueOf(50_000), 3);
+            userSecurityDetailService.addNewOnboardedUser(user, DEVICE_ID);
         });
     }
 
@@ -109,7 +115,7 @@ class UserSecurityDetailServiceImplTest {
         when(userSecurityDetailRepository.findUserSecurityDetailByDeviceId(DEVICE_ID)).thenReturn(Optional.of(userSecurityDetail));
 
         assertThrows(SecurityDetailsAlreadyExists.class, () -> {
-            userSecurityDetailService.addNewDevice(user, DEVICE_ID, BigDecimal.valueOf(50_000), 3);
+            userSecurityDetailService.addNewDevice(user, DEVICE_ID);
         });
     }
 
@@ -117,7 +123,7 @@ class UserSecurityDetailServiceImplTest {
     @DisplayName("Should add new device 🐹")
     void testShouldAddNewDevice() {
         assertDoesNotThrow(() -> {
-            userSecurityDetailService.addNewDevice(user, DEVICE_ID, BigDecimal.valueOf(50_000), 3);
+            userSecurityDetailService.addNewDevice(user, DEVICE_ID);
         });
     }
 

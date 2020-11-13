@@ -1,5 +1,4 @@
 package com.fcmb.usersecurity.services;
-import com.fcmb.usersecurity.models.User;
 import com.fcmb.usersecurity.models.UserSecurityDetail;
 
 import java.math.BigDecimal;

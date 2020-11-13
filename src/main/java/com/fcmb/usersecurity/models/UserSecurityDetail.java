@@ -28,6 +28,7 @@ public class UserSecurityDetail {
     @ManyToOne
     User user;
     String deviceId;
+    @Column(name = "transaction_limit")
     BigDecimal limit;
     Boolean limitFlag = true;
     BigDecimal totalTransactionAmount = BigDecimal.ZERO;

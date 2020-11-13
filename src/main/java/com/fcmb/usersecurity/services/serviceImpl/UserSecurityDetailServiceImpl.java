@@ -1,10 +1,11 @@
 package com.fcmb.usersecurity.services.serviceImpl;
 
+import com.fcmb.usersecurity.config.TransactionConstraints;
 import com.fcmb.usersecurity.exceptions.SecurityDetailNotFoundException;
 import com.fcmb.usersecurity.exceptions.SecurityDetailsAlreadyExists;
 import com.fcmb.usersecurity.exceptions.TransactionLimitExceededException;
-import com.fcmb.usersecurity.models.Status;
 import com.fcmb.usersecurity.models.User;
+import com.fcmb.usersecurity.models.Status;
 import com.fcmb.usersecurity.models.UserSecurityDetail;
 import com.fcmb.usersecurity.repositories.UserSecurityDetailRepository;
 import com.fcmb.usersecurity.services.UserSecurityDetailService;
@@ -24,12 +25,17 @@ import java.util.Optional;
 public class UserSecurityDetailServiceImpl implements UserSecurityDetailService, UserSecurityDetailTransactionService {
     private final UserSecurityDetailRepository userSecurityDetailRepository;
     private final UserSecurityDetailUtils userSecurityDetailUtils;
+    private final BigDecimal TRANSACTION_LIMIT;
+    private final Integer TRANSACTION_COUNT;
     Logger logger = LoggerFactory.logger(UserSecurityDetailService.class);
 
     public UserSecurityDetailServiceImpl(UserSecurityDetailRepository userSecurityDetailRepository,
-                                         UserSecurityDetailUtils userSecurityDetailUtils) {
+                                         UserSecurityDetailUtils userSecurityDetailUtils,
+                                         TransactionConstraints transactionConstraints) {
         this.userSecurityDetailRepository = userSecurityDetailRepository;
         this.userSecurityDetailUtils = userSecurityDetailUtils;
+        TRANSACTION_LIMIT = transactionConstraints.getTransactionLimit();
+        TRANSACTION_COUNT = transactionConstraints.getTransactionCount();
     }
 
     /**
@@ -37,8 +43,8 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
      * @param user
      */
     @Override
-    public void addNewOnboardedUser (User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount) {
-        createUserSecurityDetails(user, deviceId, transactionLimit, transactionCount);
+    public void addNewOnboardedUser (User user, String deviceId) {
+        createUserSecurityDetails(user, deviceId);
     }
 
     /**
@@ -62,8 +68,8 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
     }
 
     @Override
-    public void addNewDevice(User user, String newDeviceId, BigDecimal transactionLimit, Integer transactionCount) {
-        createUserSecurityDetails(user, newDeviceId, transactionLimit, transactionCount);
+    public void addNewDevice(User user, String newDeviceId) {
+        createUserSecurityDetails(user, newDeviceId);
     }
 
     /**
@@ -142,7 +148,7 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
         return true;
     }
 
-    private void createUserSecurityDetails (User user, String deviceId, BigDecimal transactionLimit, Integer transactionCount) {
+    private void createUserSecurityDetails (User user, String deviceId) {
         UserSecurityDetail newUserSecurityDetail;
         UserSecurityDetail userSecurityDetail = null;
         try {
@@ -159,10 +165,10 @@ public class UserSecurityDetailServiceImpl implements UserSecurityDetailService,
         // Else create a new security detail with a fresh transaction count, i.e starting from 3
         if (securityDetails.size() > 0) {
             newUserSecurityDetail = userSecurityDetailUtils
-                    .createNewUserSecurityDetails(user, deviceId, transactionLimit, securityDetails.get(0).getTransactionCount());
+                    .createNewUserSecurityDetails(user, deviceId, TRANSACTION_LIMIT, securityDetails.get(0).getTransactionCount());
 
         } else newUserSecurityDetail = userSecurityDetailUtils
-                .createNewUserSecurityDetails(user, deviceId, transactionLimit, transactionCount);
+                .createNewUserSecurityDetails(user, deviceId, TRANSACTION_LIMIT, TRANSACTION_COUNT);
 
         userSecurityDetailRepository.save(newUserSecurityDetail);
     }
